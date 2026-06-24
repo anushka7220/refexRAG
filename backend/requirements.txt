@@ -1,0 +1,59 @@
+#Web framework 
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+python-multipart==0.0.9
+httpx==0.27.0
+sse-starlette==2.1.0
+
+# Auth & security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+pydantic-settings==2.2.1
+pydantic==2.7.1
+
+# Database
+supabase==2.4.3
+asyncpg==0.29.0
+pgvector==0.2.5
+
+# Task queue 
+celery==5.4.0
+redis==5.0.4
+
+# GitHub ingestion 
+PyGithub==2.3.0
+tiktoken==0.7.0
+
+# Embeddings (local, no API cost) 
+sentence-transformers>=3.0.1
+torch>=2.9.0
+transformers>=4.50.0
+
+# LangGraph / LangChain 
+langgraph==0.1.5
+langchain-core==0.2.5
+langchain-google-genai==1.0.5
+
+#  LLM routing 
+litellm==1.40.0
+
+# Reranker (local cross-encoder) 
+# included in sentence-transformers above
+
+# Semantic cache
+gptcache==0.1.43
+
+# Decision extraction 
+google-generativeai==0.7.2
+
+# Utilities 
+python-dotenv==1.0.1
+tenacity==8.3.0
+structlog==24.1.0
+numpy==1.26.4
+
+# Testing
+pytest==8.2.0
+pytest-asyncio==0.23.6
+pytest-mock==3.14.0
+httpx==0.27.0
