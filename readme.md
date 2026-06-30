@@ -1,4 +1,4 @@
-# reflexRAG 🧠
+# reflexRAG 
 
 > Chat with any GitHub repo. Get answers you can trust — with citations that tell you *when* the answer might be outdated.
 
