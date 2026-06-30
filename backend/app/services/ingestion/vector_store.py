@@ -1,5 +1,5 @@
 # vector_store.py
-
+#
 # Reads and writes the chunks table in Supabase with pgvector.
 # Two responsibilities only: upsert chunks, search by similarity.
 #
@@ -9,7 +9,7 @@
 #   WHERE repo_id = $repo_id
 #   ORDER BY score DESC
 #   LIMIT 50
-
+#
 # The <=> operator is pgvector's cosine distance (0 = identical, 2 = opposite).
 # We subtract from 1 to convert to similarity (1 = identical, -1 = opposite).
 # We filter by repo_id so users only retrieve chunks from their selected repo.
@@ -259,6 +259,7 @@ class VectorStore:
             "version_tag":       chunk.version_tag,
             "content_hash":      chunk.content_hash,
             "source_created_at": chunk.source_created_at.isoformat(),
+            "url":               chunk.url,
         }
 
     def _row_to_chunk(self, row: dict) -> Chunk:
@@ -276,8 +277,8 @@ class VectorStore:
             source_created_at=datetime.fromisoformat(
                 row["source_created_at"].replace("Z", "+00:00")
             ),
+            url=row.get("url", ""),
         )
 
 
 vector_store = VectorStore()
-

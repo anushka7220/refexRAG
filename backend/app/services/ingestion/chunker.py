@@ -1,17 +1,19 @@
+# chunker.py
+#
 # Splits raw GitHub objects into embedding-ready chunks with metadata attached.
-
+#
 # WHY CHUNKING EXISTS:
 # bge-large-en-v1.5 has a 512-token input limit. GitHub issue bodies can be
 # 10,000+ tokens. Without chunking, the model silently truncates everything
 # past token 512. You'd embed only the first ~400 words of every long issue.
-
+#
 # WHY OVERLAP:
 # If we split at hard boundaries, a sentence can be cut in half:
 #   Chunk 1: "...the root cause was identified as an off-by-one error in the"
 #   Chunk 2: "pagination logic, which was fixed in commit abc123."
 # Neither chunk alone tells the full story. With 50-token overlap, the end
 # of chunk 1 appears at the start of chunk 2 — context is preserved.
-
+#
 # WHAT GETS ATTACHED TO EVERY CHUNK:
 # source_type, source_id, status, created_at, version_tag, content_hash
 # These fields are what make the critic possible — it reads metadata, not text.
@@ -184,7 +186,7 @@ class Chunker:
         self._max      = settings.MAX_CHUNK_SIZE_TOKENS
         self._overlap  = settings.CHUNK_OVERLAP_TOKENS
 
-    # Issue chunking
+    # ── Issue chunking ─────────────────────────────────────────────────────
 
     def chunk_issue(
         self,
@@ -210,7 +212,7 @@ class Chunker:
         version = extract_version_tag(issue.created_at, version_map)
         url     = _build_github_url(self.owner, self.repo_name, "issue", str(issue.number))
 
-        # Body chunks
+        # ── Body chunks ───────────────────────────────────────────────────
         # Prepend title so every chunk knows what issue it belongs to
         body_text = f"Issue #{issue.number}: {issue.title}\n\n{issue.body}"
         for piece in _split_text(body_text, self._max, self._overlap):
@@ -221,9 +223,10 @@ class Chunker:
                 status=status,
                 created_at=issue.created_at,
                 version_tag=version,
+                url=url,
             ))
 
-        # Comment chunks
+        # ── Comment chunks ────────────────────────────────────────────────
         # Each comment is a separate chunk — comments often contain the real fix
         for comment_body in issue.comments:
             comment_text = f"Comment on Issue #{issue.number}: {issue.title}\n\n{comment_body}"
@@ -235,12 +238,13 @@ class Chunker:
                     status=status,
                     created_at=issue.created_at,
                     version_tag=version,
+                    url=url,
                 ))
 
         log.debug("issue_chunked", issue_number=issue.number, chunks=len(chunks))
         return chunks
 
-    # PR chunking 
+    # ── PR chunking ────────────────────────────────────────────────────────
 
     def chunk_pr(
         self,
@@ -271,7 +275,7 @@ class Chunker:
         version  = extract_version_tag(pr.created_at, version_map)
         url      = _build_github_url(self.owner, self.repo_name, "pr", str(pr.number))
 
-        # PR body
+        # ── PR body ───────────────────────────────────────────────────────
         body_text = f"PR #{pr.number}: {pr.title}\n\n{pr.body}"
         for piece in _split_text(body_text, self._max, self._overlap):
             chunks.append(self._make_chunk(
@@ -281,9 +285,10 @@ class Chunker:
                 status=status,
                 created_at=pr.created_at,
                 version_tag=version,
+                url=url,
             ))
 
-        # Review comments (inline code comments)
+        # ── Review comments (inline code comments) ────────────────────────
         for comment_body in pr.comments:
             text = f"Review comment on PR #{pr.number}: {pr.title}\n\n{comment_body}"
             for piece in _split_text(text, self._max, self._overlap):
@@ -294,11 +299,14 @@ class Chunker:
                     status=status,
                     created_at=pr.created_at,
                     version_tag=version,
+                    url=url,
                 ))
 
-        #  Formal review bodies 
-        for review_body in pr.review_bodies:
-            text = f"Formal review on PR #{pr.number}: {pr.title}\n\n{review_body}"
+        # Formal review bodies, now carrying reviewer identity
+        for review in pr.reviews:
+            if not review.body:
+                continue
+            text = f"Formal review by {review.reviewer} on PR #{pr.number}: {pr.title}\n\n{review.body}"
             for piece in _split_text(text, self._max, self._overlap):
                 chunks.append(self._make_chunk(
                     content=piece,
@@ -307,6 +315,7 @@ class Chunker:
                     status=status,
                     created_at=pr.created_at,
                     version_tag=version,
+                    url=url,
                 ))
 
         log.debug("pr_chunked", pr_number=pr.number, chunks=len(chunks))
@@ -334,6 +343,7 @@ class Chunker:
         )
 
         chunks = []
+        url = _build_github_url(self.owner, self.repo_name, "commit", commit.sha)
         for piece in _split_text(text, self._max, self._overlap):
             chunks.append(self._make_chunk(
                 content=piece,
@@ -342,6 +352,7 @@ class Chunker:
                 status="none",
                 created_at=commit.created_at,
                 version_tag=None,
+                url=url,
             ))
 
         return chunks
@@ -369,6 +380,7 @@ class Chunker:
                 status="none",
                 created_at=release.created_at,
                 version_tag=release.tag_name,
+                url=release.html_url,
             ))
 
         return chunks
@@ -383,10 +395,14 @@ class Chunker:
         status:      SourceStatus,
         created_at:  datetime,
         version_tag: Optional[str],
+        url:         str,
     ) -> Chunk:
         """
         Creates a Chunk with all metadata attached.
         The embedding field is left empty — EmbeddingService fills it next.
+        url is built once at chunk creation time, when owner and repo_name
+        are known, and travels with the chunk through storage so citations
+        never need to reconstruct it later with incomplete information.
         """
         return Chunk(
             repo_id=self.repo_id,
@@ -396,6 +412,7 @@ class Chunker:
             status=status,
             content_hash=_compute_hash(content),
             source_created_at=created_at,
+            url=url,
             version_tag=version_tag,
             embedding=[],   # filled by EmbeddingService
             id="",          # filled after DB insert
