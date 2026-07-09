@@ -5,8 +5,8 @@
 # Creates the app, registers routers, configures middleware and CORS.
 # No business logic lives here. This file is assembly only.
 #
-# START COMMAND:
-#   uvicorn app.main:app --reload --port 8000
+#  uvicorn app.main:app --reload --port 8000START COMMAND:
+#  
 
 import structlog
 from contextlib import asynccontextmanager

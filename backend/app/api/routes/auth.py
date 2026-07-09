@@ -84,7 +84,7 @@ async def github_callback(code: str):
         #upsert usrr into our profile table
         # If the user exists, update their username and avatar in case they changed.
         # If they do not exist, create a new row.
-        user_id = upsert_profile(github_user)
+        user_id = _upsert_profile(github_user)
     except Exception as e:
         log.error("profile_upsert_failed", error=str(e))
         return RedirectResponse(
