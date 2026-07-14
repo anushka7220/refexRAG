@@ -286,6 +286,7 @@ class Chunker:
                 created_at=pr.created_at,
                 version_tag=version,
                 url=url,
+                files_touched=getattr(pr, "files_changed", []) or [],
             ))
 
         # ── Review comments (inline code comments) ────────────────────────
@@ -353,6 +354,7 @@ class Chunker:
                 created_at=commit.created_at,
                 version_tag=None,
                 url=url,
+                files_touched=commit.files,
             ))
 
         return chunks
@@ -396,6 +398,7 @@ class Chunker:
         created_at:  datetime,
         version_tag: Optional[str],
         url:         str,
+        files_touched: Optional[list[str]] = None,
     ) -> Chunk:
         """
         Creates a Chunk with all metadata attached.
@@ -416,4 +419,5 @@ class Chunker:
             version_tag=version_tag,
             embedding=[],   # filled by EmbeddingService
             id="",          # filled after DB insert
+            files_touched=files_touched or [],
         )

@@ -12,7 +12,7 @@
 from app.models.chunk import ChunkResult
 
 
-def build_rag_prompt(query: str, top_chunks: list[ChunkResult]) -> str:
+def build_rag_prompt(query: str, top_chunks: list[ChunkResult], linked_discussions: list = None) -> str:
     """
     Builds the main answer generation prompt sent to Gemini Flash.
 
@@ -42,6 +42,27 @@ def build_rag_prompt(query: str, top_chunks: list[ChunkResult]) -> str:
 
     context = "\n\n".join(context_blocks)
 
+    # Linked discussions: PR and commit chunks that touched the same files
+    # as the code chunks above. Rendered as a separate labeled section so
+    # the model can distinguish "what the code says" from "why it is so".
+    linked_section = ""
+    if linked_discussions:
+        linked_blocks = []
+        for chunk in linked_discussions:
+            linked_blocks.append(
+                f"[LINKED {chunk.source_type.upper()} #{chunk.source_id} "
+                f"| files: {', '.join((chunk.files_touched or [])[:4])} "
+                f"| chunk_id={chunk.id}]\n"
+                f"{chunk.content}\n"
+                f"[/LINKED]"
+            )
+        linked_section = (
+            "\n\nLinked discussions. These PRs and commits touched the same "
+            "files as the code above. Use them to explain WHY the code is "
+            "the way it is, and cite them when you do:\n"
+            + "\n\n".join(linked_blocks)
+        )
+
     return f"""You are a precise technical assistant answering questions about a GitHub repository.
 
 Answer ONLY using the context chunks provided below. Do not use outside knowledge about this repository.
@@ -52,7 +73,7 @@ Always cite the chunk_id of every chunk you actually relied on.
 Question: {query}
 
 Context chunks, ordered by relevance:
-{context}
+{context}{linked_section}
 
 Respond ONLY with valid JSON in this exact format:
 {{

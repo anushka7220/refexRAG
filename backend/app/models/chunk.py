@@ -60,6 +60,18 @@ class Chunk:
     embedding:    list[float]      = field(default_factory=list)
     id:           str              = ""   # filled after DB insert
 
+    # Code-chunk fields. Only set when source_type is "code".
+    # file_path is the join key that links a code chunk to the discussion
+    # chunks (commits, PRs) that touched the same file.
+    file_path:    str | None       = None
+    language:     str | None       = None
+    start_line:   int | None       = None
+    end_line:     int | None       = None
+
+    # Discussion-chunk field. Only set on commit and PR chunks: the list of
+    # repo file paths this commit or PR changed. The other half of the join.
+    files_touched: list[str]       = field(default_factory=list)
+
 
 @dataclass
 class ChunkResult:

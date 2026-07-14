@@ -266,7 +266,7 @@ class Critic:
         )
 
         try:
-            model = genai.GenerativeModel("gemini-2.0-flash")
+            model = genai.GenerativeModel("gemini-flash-latest")
             loop = asyncio.get_event_loop()
             response = await loop.run_in_executor(
                 None,

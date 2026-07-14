@@ -102,7 +102,14 @@ async def generate(state: GraphState) -> dict:
 
     top_chunks = await reranker.rerank(query_to_use, retrieved)
 
-    prompt = build_rag_prompt(query_to_use, top_chunks)
+    # THE JOIN: for every code chunk in the final context, pull the PR and
+    # commit discussions that touched the same file. Code answers "what",
+    # the linked discussions answer "why". This join is the product's core
+    # differentiator: no code-only tool can produce it, because they never
+    # indexed the conversation layer.
+    linked_discussions = _fetch_linked_discussions(top_chunks, state["repo_id"])
+
+    prompt = build_rag_prompt(query_to_use, top_chunks, linked_discussions)
 
     model = genai.GenerativeModel("gemini-2.0-flash")
     loop = asyncio.get_event_loop()
@@ -304,3 +311,53 @@ def _estimate_tokens(response) -> int:
         return response.usage_metadata.total_token_count
     except AttributeError:
         return len(response.text) // 4
+
+
+def _fetch_linked_discussions(top_chunks, repo_id: str, per_file: int = 3) -> list:
+    """
+    For each code chunk in the final retrieval set, fetches the most recent
+    discussion chunks (PRs, commits) whose files_touched includes that
+    chunk's file_path. Deduplicated across files, capped to keep the prompt
+    within budget.
+
+    Uses Postgres array overlap (files_touched && ARRAY[path]) via the
+    Supabase filter "ov". Failure here degrades gracefully to no links,
+    never to a failed answer.
+    """
+    from app.core.supabase import supabase_admin, execute
+    from app.services.ingestion.vector_store import vector_store
+
+    file_paths = {
+        r.chunk.file_path
+        for r in top_chunks
+        if getattr(r.chunk, "file_path", None)
+    }
+    if not file_paths:
+        return []
+
+    linked = []
+    seen_ids = {r.chunk.id for r in top_chunks}
+    try:
+        for path in list(file_paths)[:5]:
+            rows = execute(
+                supabase_admin.table("chunks")
+                .select("*")
+                .eq("repo_id", repo_id)
+                .in_("source_type", ["pr", "commit"])
+                .filter("files_touched", "ov", "{" + path + "}")
+                .order("source_created_at", desc=True)
+                .limit(per_file)
+                .execute()
+            )
+            for row in rows:
+                chunk = vector_store._row_to_chunk(row)
+                if chunk.id in seen_ids:
+                    continue
+                seen_ids.add(chunk.id)
+                linked.append(chunk)
+    except Exception as e:
+        log.warning("linked_discussion_fetch_failed", error=str(e))
+        return []
+
+    log.info("linked_discussions_found", count=len(linked), files=len(file_paths))
+    return linked[:6]

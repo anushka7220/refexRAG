@@ -260,6 +260,11 @@ class VectorStore:
             "content_hash":      chunk.content_hash,
             "source_created_at": chunk.source_created_at.isoformat(),
             "url":               chunk.url,
+            "file_path":         chunk.file_path,
+            "language":          chunk.language,
+            "start_line":        chunk.start_line,
+            "end_line":          chunk.end_line,
+            "files_touched":     chunk.files_touched or [],
         }
 
     def _row_to_chunk(self, row: dict) -> Chunk:
@@ -278,6 +283,11 @@ class VectorStore:
                 row["source_created_at"].replace("Z", "+00:00")
             ),
             url=row.get("url", ""),
+            file_path=row.get("file_path"),
+            language=row.get("language"),
+            start_line=row.get("start_line"),
+            end_line=row.get("end_line"),
+            files_touched=row.get("files_touched") or [],
         )
 
 

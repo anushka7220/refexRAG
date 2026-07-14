@@ -177,7 +177,7 @@ async def start_here(
         supabase_admin.table("file_areas")
         .select("area_path, complexity_score, top_contributors")
         .eq("repo_id", repo_id)
-        .order("complexity_score", asc=True)
+        .order("complexity_score", desc=False)
         .limit(5)
         .execute()
     )

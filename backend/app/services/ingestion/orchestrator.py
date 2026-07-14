@@ -92,6 +92,27 @@ class IngestionOrchestrator:
                 releases=len(releases),
             )
 
+            # Stage 2b: fetch source code as ONE tarball call.
+            # Runs after discussion fetching on purpose: the files that
+            # commits and PRs touched become priority_paths, so when the
+            # source-file cap bites, discussion-linked files are kept first.
+            # Those are the files the code-to-discussion join can enrich.
+            self._update_job(job_id, stage="fetching", progress=30)
+            priority_paths = set()
+            for commit in commits:
+                priority_paths.update(commit.files)
+            for pr in prs:
+                priority_paths.update(getattr(pr, "files_changed", []) or [])
+
+            try:
+                source_files_raw = await fetcher.fetch_source_files(
+                    owner, repo_name, priority_paths=priority_paths
+                )
+            except Exception as e:
+                # Code indexing failing must not kill discussion indexing.
+                log.warning("source_fetch_failed_continuing", error=str(e))
+                source_files_raw = []
+
             # Stage 3: chunk everything
             self._update_job(job_id, stage="chunking", progress=40)
             version_map = build_version_map(releases)
@@ -105,6 +126,23 @@ class IngestionOrchestrator:
                 all_chunks.extend(chunker.chunk_commit(commit))
             for release in releases:
                 all_chunks.extend(chunker.chunk_release(release))
+
+            # Stage 3b: chunk source code by structure
+            if source_files_raw:
+                from app.services.ingestion.code_chunker import (
+                    CodeChunker, SourceFile, language_for,
+                )
+                code_chunker = CodeChunker(
+                    repo_id=repo_id,
+                    owner=owner,
+                    repo_name=repo_name,
+                    default_branch=meta.default_branch,
+                )
+                source_files = [
+                    SourceFile(path=f.path, content=f.content, language=language_for(f.path) or "other")
+                    for f in source_files_raw
+                ]
+                all_chunks.extend(code_chunker.chunk_files(source_files))
 
             log.info("chunking_complete", repo_id=repo_id, total_chunks=len(all_chunks))
 

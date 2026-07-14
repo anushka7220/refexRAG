@@ -152,7 +152,7 @@ async def _call_agent(prompt: str, agent_name: str) -> dict:
 
     Returns parsed dict on success, empty dict on failure.
     """
-    model = genai.GenerativeModel("gemini-2.0-flash")
+    model = genai.GenerativeModel("gemini-flash-latest")
 
     try:
         # Run sync Gemini call in a thread pool so it doesn't block the event loop

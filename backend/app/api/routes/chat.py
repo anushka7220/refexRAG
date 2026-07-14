@@ -105,7 +105,7 @@ async def get_messages(
         supabase_admin.table("messages")
         .select("*")
         .eq("session_id", session_id)
-        .order("created_at", asc=True)
+        .order("created_at", desc=False)
         .execute()
     )
 
@@ -252,6 +252,8 @@ async def _stream_response(
         )
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         log.error("chat_stream_error", error=str(e))
         import json
         yield f"data: {json.dumps({'type': 'error', 'detail': str(e)})}\n\n"

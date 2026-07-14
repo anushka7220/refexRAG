@@ -19,7 +19,7 @@
 # Ingestion progress is written directly to Supabase ingestion_jobs by the
 # orchestrator. The frontend polls that table via the status endpoint.
 # Using a separate Celery result backend would be redundant.
-
+#python -m celery -A celery_worker.celery_app worker --loglevel=info
 from celery import Celery
 from app.core.config import settings
 
