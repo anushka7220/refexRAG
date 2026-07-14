@@ -1,6 +1,6 @@
 # reflexRAG 
 
-> Chat with any GitHub repo. Get answers you can trust — with citations that tell you *when* the answer might be outdated.
+> Developers don't struggle to write code. They struggle to understand code they didn't write.
 
 reflexRAG is a self-healing RAG pipeline for GitHub repositories. Paste any public repo URL and ask questions about its issues, PRs, discussions, and decision history — without hallucinating.
 
@@ -8,7 +8,9 @@ reflexRAG is a self-healing RAG pipeline for GitHub repositories. Paste any publ
 
 ## What makes this different
 
-Most "chat with repo" tools index source code. reflexRAG indexes **human communication** — issues, PR comments, discussions, rejected alternatives — and adds a critic layer that flags when an answer is sourced from a closed issue, a mismatched version, or contradictory chunks.
+Every engineer from interns to staff engineers, repeatedly pays the "understanding tax" when they join a new codebase. Most "chat with repo" tools index source code. reflexRAG indexes **human communication** — issues, PR comments, discussions, rejected alternatives — and adds a critic layer that flags when an answer is sourced from a closed issue, a mismatched version, or contradictory chunks.
+
+**The Join is the Moat** — ReflexRAG uses the repository file path as a join key between source code and GitHub discussions. After retrieving a relevant code chunk, it fetches commits and pull requests that modified the same file, allowing responses to combine implementation details with the engineering decisions behind them.
 
 **Two features nobody else has built:**
 
