@@ -46,7 +46,7 @@ def create_celery_app() -> Celery:
         # A large repo with 2000 issues at 700ms delay per call takes
         # over 20 minutes to fetch. The hard limit gives a safety margin.
         "task_acks_late": True,
-        "task_time_limit":      60 * 35,    # hard kill at 35 minutes
+        "task_time_limit":      60 * 60,    # hard kill at 60 minutes
         "task_soft_time_limit": 60 * 30,    # raises SoftTimeLimitExceeded at 30
 
         # Take one task at a time. Each ingestion is already heavy enough
